@@ -1,0 +1,115 @@
+import requests
+from bs4 import BeautifulSoup
+import time
+
+# Set the base URL for Flipkart Bluetooth speakers search results
+base_url = 'https://www.flipkart.com/search?q=Bluetooth+speakers'
+
+# Create a session
+session = requests.Session()
+
+# Define headers, including a user-agent
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,/;q=0.8'
+}
+
+# Function to scrape product URLs from the search results page
+def scrape_product_urls(search_url, max_urls=100):
+    urls = []  # List to hold product URLs
+
+    while search_url and len(urls) < max_urls:  # Continue until max URLs are reached
+        # Send a GET request to the search URL with headers
+        response = session.get(search_url, headers=headers)
+
+        # Check if the request was successful
+        if response.status_code == 200:
+            # Parse the HTML content
+            soup = BeautifulSoup(response.text, 'html.parser')
+
+            # Find all product links on the page
+            product_links = soup.find_all('a', class_='VJA3rP')  # Adjust this class based on actual page structure
+
+            # Extract and append URLs to the list
+            for link in product_links:
+                product_url = 'https://www.flipkart.com' + link['href']
+                urls.append(product_url)
+                if len(urls) >= max_urls:  # Stop if we reach the max limit
+                    break
+
+            # Find the next page link
+            if len(urls) < max_urls:  # Only search for next page if we haven't reached the limit
+                next_page = soup.find('a', class_='_1LKTO3')  # Adjust this class based on actual page structure
+                if next_page:
+                    search_url = 'https://www.flipkart.com' + next_page['href']
+                    time.sleep(2)  # Sleep to avoid overwhelming the server
+                else:
+                    break  # Exit the loop if there is no next page
+        else:
+            print(f"Failed to retrieve the page. Status code: {response.status_code}")
+            break
+
+    return urls[:max_urls]  # Return only the top 100 URLs
+
+# Scrape top 100 URLs for Bluetooth speakers
+top_100_bluetooth_speaker_urls = scrape_product_urls(base_url)
+
+# Function to scrape product data from a single URL
+def scrape_product(url):
+    # Send a GET request to the URL with headers
+    response = session.get(url, headers=headers)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+        # Parse the HTML content
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Find the price element with the updated class name
+        price_tag = soup.find('div', class_='Nx9bqj CxhGGd')  # Class for price
+        product_name_tag = soup.find('span', class_='VU-ZEz')  # Class for product name
+        rating_tag = soup.find('div', class_='XQDdHH')  # Class for rating
+        seller_tag = soup.find('div', class_='yeLeBC')  # Class for seller
+        discount_tag = soup.find('div', class_='UkUFwK WW8yVX')  # Class for discount (adjust based on actual structure)
+        lowest_price_tag = soup.find('div', class_='hk-graph-min-price')  # Class for lowest price
+
+        # If the price tag is found, extract and print the price
+        if price_tag and product_name_tag:
+            price = price_tag.text
+            product_name = product_name_tag.text
+            print(f"Product Name: {product_name}")
+            print(f"Price: {price}")
+            print(f"Link: Click here ({url})")  # Embed "Click here" text with the product URL shown in parentheses
+
+            # Extract rating and seller info if available
+            if rating_tag:
+                rating = rating_tag.text
+                print(f"Rating: {rating}/5")
+            if seller_tag:
+                seller = seller_tag.text
+                print(f"Seller: {seller}")
+
+            # Extract discount percentage if available
+            if discount_tag:
+                discount = discount_tag.text
+                print(f"Discount: {discount}")
+
+            # Extract the lowest price if available
+            if lowest_price_tag:
+                lowest_price = lowest_price_tag.text
+                print(f"Lowest Price: {lowest_price}")
+
+            print('-' * 40)  # Separator for readability
+        else:
+            print("Product name or price tag not found")
+    else:
+        print(f"Failed to retrieve the page. Status code: {response.status_code}")
+
+# Scrape details from the collected product URLs
+print("\n" + "="*50)
+print("            Product Details            ")
+print("="*50)
+
+# Iterate through the list of URLs and scrape product details
+for url in top_100_bluetooth_speaker_urls:
+    scrape_product(url)
