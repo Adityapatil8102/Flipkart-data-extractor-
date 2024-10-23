@@ -16,6 +16,8 @@ Prerequisites
 Before running the scraper, ensure you have the following installed:
 - Python 3.x
 - pip (Python package installer)
+- pip install requests beautifulsoup4
+
 
 Contributing
 Contributions are welcome! If you have suggestions for improvements or new features, feel free to fork the repository and submit a pull request.
