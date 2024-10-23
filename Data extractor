@@ -1,9 +1,10 @@
 import requests
 from bs4 import BeautifulSoup
 import time
+import re
 
-# Set the base URL for Flipkart Bluetooth speakers search results
-base_url = 'https://www.flipkart.com/search?q=Bluetooth+speakers'
+# Set the base URL for Flipkart search results
+base_url = 'https://www.flipkart.com/search?q=Nike+casual+shoes'
 
 # Create a session
 session = requests.Session()
@@ -18,18 +19,19 @@ headers = {
 # Function to scrape product URLs from the search results page
 def scrape_product_urls(search_url, max_urls=100):
     urls = []  # List to hold product URLs
+    product_link_classes = ['VJA3rP', 'rPDeLR', 'CGtC98','_4WELSP']  # List of possible class names
 
     while search_url and len(urls) < max_urls:  # Continue until max URLs are reached
-        # Send a GET request to the search URL with headers
         response = session.get(search_url, headers=headers)
 
         # Check if the request was successful
         if response.status_code == 200:
-            # Parse the HTML content
             soup = BeautifulSoup(response.text, 'html.parser')
 
-            # Find all product links on the page
-            product_links = soup.find_all('a', class_='VJA3rP')  # Adjust this class based on actual page structure
+            # Find all product links on the page using multiple classes
+            product_links = []
+            for class_name in product_link_classes:
+                product_links.extend(soup.find_all('a', class_=class_name))
 
             # Extract and append URLs to the list
             for link in product_links:
@@ -50,10 +52,10 @@ def scrape_product_urls(search_url, max_urls=100):
             print(f"Failed to retrieve the page. Status code: {response.status_code}")
             break
 
-    return urls[:max_urls]  # Return only the top 100 URLs
+    return urls[:max_urls]  # Return only the top URLs
 
-# Scrape top 100 URLs for Bluetooth speakers
-top_100_bluetooth_speaker_urls = scrape_product_urls(base_url)
+# Scrape top URLs for products
+top_product_urls = scrape_product_urls(base_url)
 
 # Function to scrape product data from a single URL
 def scrape_product(url):
@@ -65,43 +67,36 @@ def scrape_product(url):
         # Parse the HTML content
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        # Find the price element with the updated class name
+        # Find elements with updated or flexible class names
         price_tag = soup.find('div', class_='Nx9bqj CxhGGd')  # Class for price
         product_name_tag = soup.find('span', class_='VU-ZEz')  # Class for product name
         rating_tag = soup.find('div', class_='XQDdHH')  # Class for rating
         seller_tag = soup.find('div', class_='yeLeBC')  # Class for seller
-        discount_tag = soup.find('div', class_='UkUFwK WW8yVX')  # Class for discount (adjust based on actual structure)
+        discount_tag = soup.find('div', class_='UkUFwK WW8yVX')  # Class for discount
         lowest_price_tag = soup.find('div', class_='hk-graph-min-price')  # Class for lowest price
 
         # If the price tag is found, extract and print the price
         if price_tag and product_name_tag:
-            price = price_tag.text
-            product_name = product_name_tag.text
+            product_name = product_name_tag.text.strip()
+            price = price_tag.text.strip()
             print(f"Product Name: {product_name}")
             print(f"Price: {price}")
-            print(f"Link: Click here ({url})")  # Embed "Click here" text with the product URL shown in parentheses
+            print(f"Link: Click here ({url})")
 
             # Extract rating and seller info if available
-            if rating_tag:
-                rating = rating_tag.text
-                print(f"Rating: {rating}/5")
-            if seller_tag:
-                seller = seller_tag.text
-                print(f"Seller: {seller}")
+            rating = rating_tag.text.strip() if rating_tag else "N/A"
+            seller = seller_tag.text.strip() if seller_tag else "N/A"
+            discount = discount_tag.text.strip() if discount_tag else "N/A"
+            lowest_price = lowest_price_tag.text.strip() if lowest_price_tag else "N/A"
 
-            # Extract discount percentage if available
-            if discount_tag:
-                discount = discount_tag.text
-                print(f"Discount: {discount}")
-
-            # Extract the lowest price if available
-            if lowest_price_tag:
-                lowest_price = lowest_price_tag.text
-                print(f"Lowest Price: {lowest_price}")
+            print(f"Rating: {rating}/5")
+            print(f"Seller: {seller}")
+            print(f"Discount: {discount}")
+            print(f"Lowest Price: {lowest_price}")
 
             print('-' * 40)  # Separator for readability
         else:
-            print("Product name or price tag not found")
+            print(f"Product details not found for URL: {url}")
     else:
         print(f"Failed to retrieve the page. Status code: {response.status_code}")
 
@@ -111,5 +106,7 @@ print("            Product Details            ")
 print("="*50)
 
 # Iterate through the list of URLs and scrape product details
-for url in top_100_bluetooth_speaker_urls:
+for url in top_product_urls:
     scrape_product(url)
+    time.sleep(5)  # Increase sleep duration between requests
+
